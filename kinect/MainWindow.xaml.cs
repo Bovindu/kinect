@@ -1,6 +1,4 @@
-﻿
-
-using System;
+﻿using System;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -14,6 +12,8 @@ namespace KinectStrawberryPlucker
         private WriteableBitmap colorBitmap;
         private WriteableBitmap depthBitmap;
         private byte[] depthPixels;
+        private short[] depthDataGlobal;
+
 
         public MainWindow()
         {
@@ -75,6 +75,7 @@ namespace KinectStrawberryPlucker
                 {
                     byte[] colorData = new byte[colorFrame.PixelDataLength];
                     colorFrame.CopyPixelDataTo(colorData);
+
                     colorBitmap.WritePixels(new Int32Rect(0, 0, colorFrame.Width, colorFrame.Height),
                         colorData, colorFrame.Width * 4, 0);
                 }
@@ -90,6 +91,8 @@ namespace KinectStrawberryPlucker
                     short[] depthData = new short[depthFrame.PixelDataLength];
                     depthFrame.CopyPixelDataTo(depthData);
 
+                    depthDataGlobal = depthData; // Save globally for mouse hover!
+
                     for (int i = 0; i < depthData.Length; i++)
                     {
                         int depth = depthData[i] >> DepthImageFrame.PlayerIndexBitmaskWidth;
@@ -101,6 +104,37 @@ namespace KinectStrawberryPlucker
                 }
             }
         }
+
+        private void DepthImage_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            if (depthPixels == null || depthPixels.Length == 0)
+                return;
+
+            // Get mouse position relative to DepthImage
+            Point position = e.GetPosition(DepthImage);
+
+            int imageWidth = depthBitmap.PixelWidth;
+            int imageHeight = depthBitmap.PixelHeight;
+
+            // Map mouse position to image pixel coordinates
+            int x = (int)(position.X * imageWidth / DepthImage.ActualWidth);
+            int y = (int)(position.Y * imageHeight / DepthImage.ActualHeight);
+
+            if (x >= 0 && x < imageWidth && y >= 0 && y < imageHeight)
+            {
+                int index = y * imageWidth + x;
+
+                // Warning: depthPixels only stores 8-bit grayscale, we need original 16-bit depth!
+                // We need to store original short[] depthData globally
+
+                if (depthDataGlobal != null && index < depthDataGlobal.Length)
+                {
+                    int depthInMillimeters = depthDataGlobal[index] >> DepthImageFrame.PlayerIndexBitmaskWidth;
+                    DepthInfoLabel.Content = $"Depth at ({x},{y}): {depthInMillimeters} mm";
+                }
+            }
+        }
+
 
         protected override void OnClosed(EventArgs e)
         {

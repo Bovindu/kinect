@@ -3,11 +3,24 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Kinect Strawberry Plucker" Height="600" Width="1000">
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
-        <Image Name="KinectImage" Grid.Column="0" Stretch="Uniform" />
-        <Image Name="DepthImage" Grid.Column="1" Stretch="Uniform" />
+
+        <!-- Color Image -->
+        <Image Name="KinectImage" Grid.Row="0" Grid.Column="0" Stretch="Uniform" />
+
+        <!-- Depth Image with MouseMove event -->
+        <Image Name="DepthImage" Grid.Row="0" Grid.Column="1" Stretch="Uniform" MouseMove="DepthImage_MouseMove" />
+
+        <!-- Label to show depth information -->
+        <Label Name="DepthInfoLabel" Grid.Row="1" Grid.ColumnSpan="2" 
+               HorizontalAlignment="Center" FontSize="16" Padding="10"/>
     </Grid>
 </Window>
