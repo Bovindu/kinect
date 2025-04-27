@@ -1,4 +1,6 @@
-﻿using System;
+﻿
+
+using System;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -10,6 +12,8 @@ namespace KinectStrawberryPlucker
     {
         private KinectSensor kinectSensor;
         private WriteableBitmap colorBitmap;
+        private WriteableBitmap depthBitmap;
+        private byte[] depthPixels;
 
         public MainWindow()
         {
@@ -19,7 +23,6 @@ namespace KinectStrawberryPlucker
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            // Check for available Kinect sensors
             if (KinectSensor.KinectSensors.Count == 0)
             {
                 MessageBox.Show("No Kinect sensor detected. Please check the USB connection and power adapter.");
@@ -28,7 +31,6 @@ namespace KinectStrawberryPlucker
 
             try
             {
-                // Get the first Kinect sensor
                 kinectSensor = KinectSensor.KinectSensors[0];
                 if (kinectSensor == null)
                 {
@@ -36,21 +38,21 @@ namespace KinectStrawberryPlucker
                     return;
                 }
 
-                // Check sensor status
                 if (!kinectSensor.IsRunning)
                 {
-                    // Initialize streams
                     kinectSensor.ColorStream.Enable(ColorImageFormat.RgbResolution640x480Fps30);
                     kinectSensor.DepthStream.Enable(DepthImageFormat.Resolution640x480Fps30);
 
-                    // Set up bitmap for RGB display
                     colorBitmap = new WriteableBitmap(640, 480, 96, 96, PixelFormats.Bgr32, null);
                     KinectImage.Source = colorBitmap;
 
-                    // Subscribe to frame-ready event
-                    kinectSensor.ColorFrameReady += KinectSensor_ColorFrameReady;
+                    depthBitmap = new WriteableBitmap(640, 480, 96, 96, PixelFormats.Gray8, null);
+                    DepthImage.Source = depthBitmap;
+                    depthPixels = new byte[640 * 480];
 
-                    // Start the sensor
+                    kinectSensor.ColorFrameReady += KinectSensor_ColorFrameReady;
+                    kinectSensor.DepthFrameReady += KinectSensor_DepthFrameReady;
+
                     kinectSensor.Start();
                     MessageBox.Show("Kinect sensor started successfully.");
                 }
@@ -75,6 +77,27 @@ namespace KinectStrawberryPlucker
                     colorFrame.CopyPixelDataTo(colorData);
                     colorBitmap.WritePixels(new Int32Rect(0, 0, colorFrame.Width, colorFrame.Height),
                         colorData, colorFrame.Width * 4, 0);
+                }
+            }
+        }
+
+        private void KinectSensor_DepthFrameReady(object sender, DepthImageFrameReadyEventArgs e)
+        {
+            using (DepthImageFrame depthFrame = e.OpenDepthImageFrame())
+            {
+                if (depthFrame != null)
+                {
+                    short[] depthData = new short[depthFrame.PixelDataLength];
+                    depthFrame.CopyPixelDataTo(depthData);
+
+                    for (int i = 0; i < depthData.Length; i++)
+                    {
+                        int depth = depthData[i] >> DepthImageFrame.PlayerIndexBitmaskWidth;
+                        depthPixels[i] = (byte)(depth / 256); // Normalize to 0-255 for grayscale
+                    }
+
+                    depthBitmap.WritePixels(new Int32Rect(0, 0, depthFrame.Width, depthFrame.Height),
+                        depthPixels, depthFrame.Width, 0);
                 }
             }
         }
